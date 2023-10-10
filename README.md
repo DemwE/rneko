@@ -1,7 +1,5 @@
 # rneko
 
-A simple Rust application for downloading neko (young girls) images from the internet.
-
 A simple CLI tool for download random nekos.
 
 ## Installation
