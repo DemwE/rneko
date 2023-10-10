@@ -3,6 +3,10 @@ name = "rneko"
 version = "1.0.0"
 authors = ["Mateusz Czarnecki (DemwE)"]
 description = "A simple CLI tool for download random nekos."
+repository = "https://github.com/DemwE/rtiny"
+license = "GPL-3.0"
+readme = "README.md"
+categories = ["command-line-utilities"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -11,7 +15,6 @@ edition = "2021"
 clap = {version = "4.4.6", features = ["derive"]}
 colorful = "0.2.2"
 directories = "5.0.1"
-features = "0.10.0"
 indicatif = {version = "0.17.7", features = ["improved_unicode", "unicode-segmentation"]}
 reqwest = {version = "0.11.21", features = ["blocking", "json", "stream"]}
 serde = { version = "1.0.188", features = ["derive"] }
