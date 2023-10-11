@@ -3,10 +3,9 @@ mod api;
 mod download;
 
 use clap::Parser;
-use std::error::Error;
-use colorful::{Color, Colorful};
 
-fn main() -> Result<(), Box<dyn Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Parse arguments
     let args = args::Args::parse();
 
@@ -15,25 +14,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     // make from argument full file name
     let full_file_name = args.save_directory + "/" + &*file_name;
 
-    let neko_result = api::nekos();
+    let neko_result = api::nekos().await?;
 
-    match &neko_result {
-        Ok(neko) => {
-            let image = neko.url.clone();
-            let source_image = neko.source_url.clone();
-            let artist = neko.artist_name.clone();
+    println!("Artist: {}", neko_result.artist_name);
+    println!("Source image: {}", neko_result.source_url);
 
-            // println!("Image: {}", image);
-            println!("Artist: {}", artist);
-            println!("Source image: {}", source_image);
-
-            download::download_image(&image, &full_file_name)?;
-        }
-        Err(err) => {
-            let error_message = format!("Error: {}", err);
-            eprintln!("{}", error_message.color(Color::Red));
-        }
-    };
+    download::download_image(&neko_result.url, &full_file_name).await?;
 
     Ok(())
 }

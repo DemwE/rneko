@@ -19,5 +19,5 @@ indicatif = {version = "0.17.7", features = ["improved_unicode", "unicode-segmen
 reqwest = {version = "0.11.21", features = ["blocking", "json", "stream"]}
 serde = { version = "1.0.188", features = ["derive"] }
 serde_json = "1.0.107"
-
+tokio = {version = "1.32.0" , features = ["full"]}
 
