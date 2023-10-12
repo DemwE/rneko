@@ -14,7 +14,7 @@ pub struct Args {
     #[clap(short, long)]
     pub save_directory: String,
     // Save file name when argument in -n or --name is used
-    #[clap(default_value = "neko.jpg")]
+    #[clap(default_value = "neko.png")]
     #[clap(short, long)]
     pub name: Option<String>,
 }
