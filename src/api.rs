@@ -15,8 +15,9 @@ struct NekoResponse {
     results: Vec<Neko>,
 }
 
-pub async fn nekos() -> Result<Neko, Box<dyn Error>> {
-    let getinfo = reqwest::get("https://nekos.best/api/v2/neko").await?;
+pub async fn output(category: &String) -> Result<Neko, Box<dyn Error>> {
+    let url = format!("https://nekos.best/api/v2/{}", category);
+    let getinfo = reqwest::get(url).await?;
 
     let error_message = if getinfo.status().is_success() {
         let info = getinfo.text().await?;

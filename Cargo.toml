@@ -1,6 +1,6 @@
 [package]
 name = "rneko"
-version = "1.1.1"
+version = "1.2.0"
 authors = ["Mateusz Czarnecki (DemwE)"]
 description = "A simple CLI tool for download random nekos."
 repository = "https://github.com/DemwE/rneko"

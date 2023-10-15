@@ -8,18 +8,19 @@ use clap::Parser;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Parse arguments
     let args = args::Args::parse();
+    let category = args.category;
 
     let file_name = args.name.unwrap();
 
     // make from argument full file name
     let full_file_name = args.save_directory + "/" + &*file_name;
 
-    let neko_result = api::nekos().await?;
+    let result = api::output(&category).await?;
 
-    println!("Artist: {}", neko_result.artist_name);
-    println!("Source image: {}", neko_result.source_url);
+    println!("Artist: {}", result.artist_name);
+    println!("Source image: {}", result.source_url);
 
-    download::download_image(&neko_result.url, &full_file_name).await?;
+    download::download_image(&result.url, &full_file_name).await?;
 
     Ok(())
 }
