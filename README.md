@@ -11,10 +11,10 @@ A simple CLI tool for download random nekos.
 ## Usage
 
 ```
- Options:
+Options:
   -s, --save-directory <SAVE_DIRECTORY>  [default: .]
-  -n, --name <NAME>                      [default: neko.jpg]
+  -n, --name <NAME>                      [default: output.png]
+  -c, --category <CATEGORY>              Image category | neko, kitsune, waifu [default: neko]
   -h, --help                             Print help
-  -V, --version                          Print version
-
+  -V, --version                          Print version 
 ```
