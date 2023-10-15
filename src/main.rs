@@ -1,6 +1,7 @@
 mod args;
 mod api;
 mod download;
+mod category;
 
 use clap::Parser;
 
@@ -9,6 +10,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Parse arguments
     let args = args::Args::parse();
     let category = args.category;
+    let category = category::check(&category).await?;
 
     let file_name = args.name.unwrap();
 
