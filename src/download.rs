@@ -4,17 +4,22 @@ use std::fs::File;
 use std::io::{Write, BufWriter};
 use indicatif::{ProgressBar, ProgressStyle};
 use colorful::{Color, Colorful};
+use log::{debug, error, info};
 
 pub async fn download_image(url: &str, save_path: &str) -> Result<(), Box<dyn Error>> {
+    info!("Starting to download the image from: {}", url);
     // Parse URL
     let url = Url::parse(url)?;
 
     // Make GET request
-    let mut response = reqwest::get(url).await?;
+    debug!("Sending GET request");
+    let mut response = reqwest::get(url.clone()).await?;
 
     if response.status().is_success() {
+        debug!("Received successful response");
         // Get total file size from response headers
         let total_size = response.content_length().unwrap_or(0);
+        info!("Total size of the file: {}", total_size);
         let pb = ProgressBar::new(total_size);
         pb.set_style(
             ProgressStyle::default_bar()
@@ -24,6 +29,7 @@ pub async fn download_image(url: &str, save_path: &str) -> Result<(), Box<dyn Er
         );
 
         // Open file for writing
+        debug!("Opening file for writing: {}", save_path);
         let file = File::create(save_path)?;
         let mut buffered_file = BufWriter::new(file);
 
@@ -35,10 +41,13 @@ pub async fn download_image(url: &str, save_path: &str) -> Result<(), Box<dyn Er
             pb.set_position(downloaded);
         }
 
+        debug!("Flushing buffer to ensure all data is written to disk");
         buffered_file.flush()?; // Flush the buffer to ensure all data is written to disk
 
+        info!("Successfully downloaded the image from: {}", url);
         Ok(())
     } else {
+        error!("Error during image download, status: {}", response.status());
         let error_message = format!("Error: {}", response.status());
         Err(Box::new(std::io::Error::new(
             std::io::ErrorKind::Other,

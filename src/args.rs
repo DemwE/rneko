@@ -21,4 +21,7 @@ pub struct Args {
     #[clap(default_value = "neko")]
     #[clap(short, long)]
     pub category: String,
+    /// Activate debug mode
+    #[clap(short, long)]
+    pub debug: bool,
 }
