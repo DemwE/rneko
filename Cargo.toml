@@ -12,14 +12,14 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = {version = "4.4.6", features = ["derive"]}
+clap = {version = "4.5.1", features = ["derive"]}
 colorful = "0.2.2"
 directories = "5.0.1"
-indicatif = {version = "0.17.7", features = ["improved_unicode", "unicode-segmentation"]}
-reqwest = {version = "0.11.21", features = ["blocking", "json", "stream"]}
-serde = { version = "1.0.188", features = ["derive"] }
-serde_json = "1.0.107"
-tokio = {version = "1.32.0" , features = ["full"]}
+indicatif = {version = "0.17.8", features = ["improved_unicode", "unicode-segmentation"]}
+reqwest = {version = "0.11.24", features = ["blocking", "json", "stream"]}
+serde = { version = "1.0.197", features = ["derive"] }
+serde_json = "1.0.114"
+tokio = {version = "1.36.0" , features = ["full"]}
 log = "0.4.20"
-env_logger = "0.10.1"
+env_logger = "0.11.2"
 
