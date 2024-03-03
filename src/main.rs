@@ -1,43 +1,91 @@
 mod args;
+mod category;
 mod api;
 mod download;
-mod category;
 
+use std::sync::Arc;
 use clap::Parser;
-use log::{LevelFilter, info, debug};
+use log::{LevelFilter, debug, error, info};
+use download::download;
+use futures::future::try_join_all;
+use tokio::sync::Semaphore;
+use indicatif::{ProgressBar, ProgressStyle};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize logger
+async fn main() {
+    // Initialize the logger
     if args::Args::parse().debug {
         env_logger::builder().filter(None, LevelFilter::Debug).init();
         info!("Debug mode is enabled");
     }
-    // Parse arguments
+
+    // Parse the arguments
     let args = args::Args::parse();
-    //Debug arguments
-    debug!("Parsed arguments: {:#?}", args);
 
-    let category = args.category;
-    info!("Validating category: {}", category);
-    let category = category::check(&category).await?;
+    // Check the category
+    let category = args.category.to_lowercase();
+    if !category::check(category.as_str()) {
+        std::process::exit(1);
+    }
 
-    let file_name = args.name.unwrap();
-    debug!("Filename from arguments: {}", file_name);
+    // Create a new progress bar if debug mode is disabled
+    let pb = if !args.debug {
+        let pb = ProgressBar::new(args.amount.into());
+        pb.set_style(ProgressStyle::default_bar()
+            .template("[{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len}").unwrap()
+            .progress_chars("#>-"));
+        Some(pb)
+    } else {
+        info!("Debug mode is enabled - progress bar will not be shown");
+        None
+    };
 
-    // make from argument full file name
-    let full_file_name = args.save_directory + "/" + &*file_name;
-    debug!("Full file name is: {}", full_file_name);
+    //Fetch api
+    let results = api::get_images(category.as_str(), args.amount, args.debug).await;
 
-    info!("Creating new reqwest client and sending a request for category: {}", category);
-    let result = api::output(&category).await?;
-    debug!("Received from HTTP response: {:#?}", result);
+    match results {
+        Ok(results) => {
+            info!("Fetched {} images", results.results.len());
+            let mut tasks = Vec::new();
+            let semaphore = Arc::new(Semaphore::new(args.workers));
 
-    println!("Artist: {}", result.artist_name);
-    println!("Source image: {}", result.source_url);
+            for (index, result) in results.results.iter().enumerate() {
+                if let Some(pb) = &pb {
+                    pb.inc(0);
+                }
+                let save_directory = args.save_directory.clone();
+                let url = result.url.clone();
+                let semaphore = Arc::clone(&semaphore);
+                let index = if args.amount > 1 { Some(index as u16) } else { None };
+                let name = args.name.clone();
+                let pb = pb.clone();
+                let task = tokio::spawn(async move {
+                    let _permit = semaphore.acquire_owned().await;
+                    let download_result = download(url, save_directory, &name, index).await;
+                    if let Some(pb) = &pb {
+                        pb.inc(1);
+                    }
+                    download_result
+                });
+                tasks.push(task);
+            }
+            // Wait for all tasks to complete
+            let results = try_join_all(tasks).await;
 
-    info!("Downloading image from {}", result.url);
-    download::download_image(&result.url, &full_file_name).await?;
+            // Handle errors (if any)
+            if let Err(e) = &results {
+                error!("Failed to download some files: {:?}", e);
+            }
 
-    Ok(())
+            info!("Finished downloading images");
+            info!("Downloaded {} images", results.unwrap().len());
+            if !args.debug {
+                pb.unwrap().finish_with_message("done");
+            }
+        }
+        Err(error) => {
+            debug!("Error: {}", error);
+            std::process::exit(1);
+        }
+    }
 }

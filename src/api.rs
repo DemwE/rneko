@@ -1,47 +1,70 @@
+use log::{debug, info};
 use serde::Deserialize;
-use std::error::Error;
-use colorful::{Color, Colorful};
-use log::{debug, error, info};
+use reqwest::Error;
+use indicatif::{ProgressBar, ProgressStyle};
 
-#[derive(Clone, Deserialize, Debug)]
-pub struct Neko {
+#[derive(Debug, Deserialize)]
+pub struct Result {
     pub artist_href: String,
     pub artist_name: String,
     pub source_url: String,
     pub url: String,
 }
 
-#[derive(Deserialize)]
-struct NekoResponse {
-    results: Vec<Neko>,
+#[derive(Debug, Deserialize)]
+pub struct Results {
+    pub results: Vec<Result>,
 }
 
-pub async fn output(category: &String) -> Result<Neko, Box<dyn Error>> {
-    debug!("Fetching data for category: {}", category);
-    let url = format!("https://nekos.best/api/v2/{}", category);
-    debug!("URL to fetch data: {}", url);
+pub async fn get_images(category: &str, amount: u16, debug: bool) -> std::result::Result<Results, Error> {
+    let api_limit = 20;
+    let full_requests = amount / api_limit;
+    let remainder = amount % api_limit;
+    debug!("Full requests: {}", full_requests);
+    debug!("Remainder: {}", remainder);
 
-    let getinfo = reqwest::get(&url).await?;
-    debug!("Response received from the server");
+    let mut all_results = Vec::new();
 
-    if !getinfo.status().is_success() {
-        error!("HTTP error: {}", getinfo.status());
-        Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, format!("HTTP error: {}", getinfo.status()))))
+    // Create a new progress bar if debug mode is disabled
+    let pb = if !debug {
+        let pb = ProgressBar::new((full_requests + if remainder > 0 { 1 } else { 0 }).into());
+        pb.set_style(ProgressStyle::default_bar()
+            .template("[{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len}").unwrap()
+            .progress_chars("#>-"));
+        Some(pb)
     } else {
-        debug!("HTTP request was successful");
-        let info = getinfo.text().await?;
-        info!("Response body received");
-        debug!("Response body: {}", info);
+        info!("Debug mode is enabled - progress bar will not be shown");
+        None
+    };
 
-        let parsed: NekoResponse = serde_json::from_str(&info)?;
-
-        if let Some(neko_result) = parsed.results.first() {
-            info!("Neko result obtained");
-            debug!("Neko result: {:?}", neko_result);
-            Ok(neko_result.clone())
-        } else {
-            error!("No data in the response");
-            Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "Error: No data in response".to_string().color(Color::Red).to_string())))
+    if let Some(pb) = &pb {
+        pb.inc(0);
+    }
+    
+    for _ in 0..full_requests {
+        let url = format!("https://nekos.best/api/v2/{}?amount={}", category, api_limit);
+        info!("Fetching images from: {}", url);
+        let response = reqwest::get(&url).await?;
+        let results = response.json::<Results>().await?;
+        all_results.extend(results.results);
+        if let Some(pb) = &pb {
+            pb.inc(1);
         }
     }
+
+    if remainder > 0 {
+        let url = format!("https://nekos.best/api/v2/{}?amount={}", category, remainder);
+        info!("Fetching images from: {}", url);
+        let response = reqwest::get(&url).await?;
+        let results = response.json::<Results>().await?;
+        all_results.extend(results.results);
+        if let Some(pb) = &pb {
+            pb.inc(1);
+        }
+    }
+
+    if !debug {
+        pb.unwrap().finish_with_message("done");
+    }
+    Ok(Results { results: all_results })
 }

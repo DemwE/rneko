@@ -1,57 +1,45 @@
-use reqwest::Url;
-use std::error::Error;
-use std::fs::File;
-use std::io::{Write, BufWriter};
-use indicatif::{ProgressBar, ProgressStyle};
-use colorful::{Color, Colorful};
-use log::{debug, error, info};
+use anyhow::anyhow;
+use log::{debug, info};
 
-pub async fn download_image(url: &str, save_path: &str) -> Result<(), Box<dyn Error>> {
-    info!("Starting to download the image from: {}", url);
-    // Parse URL
-    let url = Url::parse(url)?;
+pub async fn download(url: String, save_directory: String, name: &String, index: Option<u16>) -> Result<(), anyhow::Error> {
+    // Create the save path
+    let extension = url.split('.').last().unwrap().to_string();
+    let save_path = match index {
+        Some(i) => format!("{}/{}-{}.{}", save_directory, name, i + 1, extension),
+        None => format!("{}/{}.{}", save_directory, name, extension),
+    };
+    let save_name = save_path.split('/').last().unwrap().to_string();
 
-    // Make GET request
-    debug!("Sending GET request");
-    let mut response = reqwest::get(url.clone()).await?;
+    debug!("Save path: {}", save_path);
 
-    if response.status().is_success() {
-        debug!("Received successful response");
-        // Get total file size from response headers
-        let total_size = response.content_length().unwrap_or(0);
-        info!("Total size of the file: {}", total_size);
-        let pb = ProgressBar::new(total_size);
-        pb.set_style(
-            ProgressStyle::default_bar()
-                .template("[{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} | {binary_bytes_per_sec} | eta {eta}")
-                .unwrap()
-                .progress_chars("#>-"),
-        );
+    let max_retries = 3;
+    let mut retries = 0;
 
-        // Open file for writing
-        debug!("Opening file for writing: {}", save_path);
-        let file = File::create(save_path)?;
-        let mut buffered_file = BufWriter::new(file);
-
-        // Read response in chunks and write to file with progress update
-        let mut downloaded = 0;
-        while let Some(chunk) = response.chunk().await? {
-            buffered_file.write_all(&chunk)?;
-            downloaded += chunk.len() as u64;
-            pb.set_position(downloaded);
+    while retries < max_retries {
+        // Fetch the image
+        let response = reqwest::get(url.as_str()).await;
+        match response {
+            Ok(response) => {
+                if response.status().is_success() {
+                    info!("Successfully fetched image: {}", save_name);
+                    // Save the image
+                    let bytes = response.bytes().await?;
+                    tokio::fs::write(save_path, bytes).await?;
+                    info!("Successfully saved image: {} in path: {}", save_name, save_directory);
+                    break;
+                } else {
+                    return Err(anyhow!("Failed to fetch image"));
+                }
+            }
+            Err(e) => {
+                retries += 1;
+                debug!("Failed to fetch image on attempt {}: {}", retries, e);
+                if retries >= max_retries {
+                    return Err(anyhow!("Failed to fetch image after {} attempts", max_retries));
+                }
+            }
         }
-
-        debug!("Flushing buffer to ensure all data is written to disk");
-        buffered_file.flush()?; // Flush the buffer to ensure all data is written to disk
-
-        info!("Successfully downloaded the image from: {}", url);
-        Ok(())
-    } else {
-        error!("Error during image download, status: {}", response.status());
-        let error_message = format!("Error: {}", response.status());
-        Err(Box::new(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            error_message.color(Color::Red).to_string(),
-        )))
     }
+
+    Ok(())
 }

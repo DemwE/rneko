@@ -9,14 +9,14 @@ use clap::{command, Parser};
 help_template = "{name} {version} {author-section} {about-with-newline} \n {all-args}"
 )]
 pub struct Args {
-    // Save directory for the file where default is current directory
+    /// Save directory for the file where default is current directory
     #[clap(default_value = ".")]
     #[clap(short, long)]
     pub save_directory: String,
-    // Save file name when argument in -n or --name is used
-    #[clap(default_value = "output.png")]
+    // Save file with name
+    #[clap(default_value = "output")]
     #[clap(short, long)]
-    pub name: Option<String>,
+    pub name: String,
     /// Image category | neko, kitsune, waifu
     #[clap(default_value = "neko")]
     #[clap(short, long)]
@@ -24,4 +24,12 @@ pub struct Args {
     /// Activate debug mode
     #[clap(short, long)]
     pub debug: bool,
+    /// Amount of images to download
+    #[clap(default_value = "1")]
+    #[clap(short, long)]
+    pub amount: u16,
+    /// Amount of workers
+    #[clap(default_value = "16")]
+    #[clap(short, long)]
+    pub workers: usize,
 }
